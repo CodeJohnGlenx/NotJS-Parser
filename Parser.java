@@ -58,7 +58,7 @@ public class Parser {
     }
 
     public static boolean mainBody() {
-        if (fieldDeclaration()) {
+        if (constantExpression()) {
             return true;
         } else if (tokens.isEmpty() || lexemes.isEmpty()) {
             return true;
@@ -83,6 +83,329 @@ public class Parser {
         } else {
             return false;
         }
+    }
+
+    // <constant expression> ::= <expression>
+    public static boolean constantExpression() {
+        if (expression()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <expression> ::= <assignment expression>
+    public static boolean expression() {
+        if (assignmentExpression()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <assignment expression> ::= <conditional expression> | <assignment>
+    public static boolean assignmentExpression() {
+        String[] assignOps = {"ASSIGNMENT_OP", "ADDITION_ASSIGNMENT_OP", "SUBTRACTION_ASSIGNMENT_OP", "MULTIPLICATION_ASSIGNMENT_OP",
+        "DIVISION_ASSIGNMENT_OP", "MODULUS_ASSIGNMENT_OP", "EXPONENTIATION_ASSIGNMENT_OP", "FLOOR_DIVISION_ASSIGNMENT_OP"};
+        for (String op: assignOps) {
+            if (tokens.get(0).equals("IDENTIFIER") && tokens.get(1).equals(op)) {
+                if (assignment()) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        if (conditionalExpression()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <assignment> ::= <left hand side> <assignment operator> <assignment expression>
+    public static boolean assignment() {
+        if (leftHandSide()) {
+            if (assignmentOperator()) {
+                if (assignmentExpression()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // <left hand side> ::= <expression name>
+    public static boolean leftHandSide() {
+        if (expressionName()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <assignment operator> ::= = | += | -= | *= | /= | %= | **= | //=
+    public static boolean assignmentOperator() { 
+        String[] assignOps = {"ASSIGNMENT_OP", "ADDITION_ASSIGNMENT_OP", "SUBTRACTION_ASSIGNMENT_OP", "MULTIPLICATION_ASSIGNMENT_OP",
+        "DIVISION_ASSIGNMENT_OP", "MODULUS_ASSIGNMENT_OP", "EXPONENTIATION_ASSIGNMENT_OP", "FLOOR_DIVISION_ASSIGNMENT_OP"};
+        for (String op: assignOps) {
+            if (tokenCheck(op)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // <conditional expression> ::= <conditional or expression> | <conditional or expression> ? <expression> : <conditional expression>
+    public static boolean conditionalExpression() { 
+        if (conditionalOrExpression()) {
+            if (tokenCheck("TERNARY_OP")) {
+                if (expression()) {
+                    if (tokenCheck("COLON_DEL")) {
+                        if (conditionalExpression()) {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // <conditional or expression> ::= <conditional and expression> || <conditional or expression> || <conditional and expression>
+    public static boolean conditionalOrExpression() { 
+        if (conditionalAndExpression()) {
+            if (tokenCheck("OR_OP")) {
+                if (conditionalOrExpression()) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+
+    // <conditional and expression> ::= <and expression> && <conditional and expression> | <and expression>
+    public static boolean conditionalAndExpression() { 
+        if (andExpression()) {
+            if (tokenCheck("AND_OP")) {
+                if (conditionalAndExpression()) {
+                    return true;
+                } else { 
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // <and expression> ::= <equality expression>
+    public static boolean andExpression() {
+        if (equalityExpression()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <equality expression> ::= <relational expression> == <relational expression> | <relational expression> != <relational expression> | <relational expression>
+    public static boolean equalityExpression() {
+        if (relationalExpression()) {
+            if (token.equals("EQUAL_TO_OP") || token.equals("NOT_EQUAL_TO_OP")) {
+                if (tokenCheck(token)) {
+                    if (relationalExpression()) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // <relational expression> ::= <shift expression> < <relational expression> | <shift expression> > <relational expression> | <shift expression> <= <relational expression> | <shift expression> >= <relational expression> | <shift expression>
+    public static boolean relationalExpression() {
+        if (shiftExpression()) {
+            if (token.equals("GREATER_THAN_OP") || token.equals("GREATER_THAN_EQUAL_TO_OP") ||
+            token.equals("LESS_THAN_OP") || token.equals("LESS_THAN_EQUAL_TO_OP")) {
+                if (tokenCheck(token)) {
+                    if (shiftExpression()) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } 
+            }
+            return true;
+        }
+        return false; 
+    }
+
+    // <shift expression> ::= <additive expression>
+    public static boolean shiftExpression() { 
+        if (additiveExpression()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <additive expression> ::= <multiplicative expression> + <additive expression> | <multiplicative expression> - <additive expression> | <multiplicative expression>
+    public static boolean additiveExpression() { 
+        if (multiplicativeExpression()) {
+            if (token.equals("ADDITION_OP") || token.equals("SUBTRACTION_OP")) {
+                if (tokenCheck(token)) {
+                    if (additiveExpression()) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+
+    // <multiplicative expression> ::= <unary expression> * <multiplicative expression> |  <unary expression> / <multiplicative expression>  |  <unary expression> % <multiplicative expression>  |  <unary expression> ** <multiplicative expression> |  <unary expression> // <multiplicative expression> | <unary expression> 
+    public static boolean multiplicativeExpression() { 
+        if (unaryExpression()) {
+            if (token.equals("MULTIPLICATION_OP") || token.equals("EXPONENTIATION_OP") || 
+            token.equals("FLOOR_DIVISION_OP") || token.equals("DIVISION_OP") || token.equals("MODULUS_OP")) {
+                if (tokenCheck(token)) {
+                    if (multiplicativeExpression()) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+            } 
+            return true;
+        }
+        return false;
+    }
+
+    // <unary expression> ::= <preincrement expression> | <predecrement expression> | + <unary expression> | - <unary expression> | <unary expression not plus minus>
+    public static boolean unaryExpression() { 
+        if (preIncrementExpression()) {
+            return true;
+        } else if (preDecrementExpression()) {
+            return true;
+        } else if (tokenCheck("ADDITION_OP")) {
+            if (unaryExpression()) {
+                return true;
+            }
+        } else if (tokenCheck("SUBTRACTION_OP")) {
+            if (unaryExpression()) {
+                return true;
+            }
+        } else if (unaryExpressionNotPlusMinus()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <predecrement expression> ::= -- <unary expression>
+    public static boolean preDecrementExpression() { 
+        if (tokenCheck("DECREMENT")) {
+            if (unaryExpression()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // <preincrement expression> ::= ++ <unary expression>
+    public static boolean preIncrementExpression() { 
+        if (tokenCheck("INCREMENT")) {
+            if (unaryExpression()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // <unary expression not plus minus> ::= ! <unary expression> | <postfix expression>
+    public static boolean unaryExpressionNotPlusMinus() {
+        if (tokenCheck("NOT_OP")) {
+            if (unaryExpression()) {
+                return true;
+            }
+        } else if (postfixExpression()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <postdecrement expression> ::= <postfix expression> --
+    public static boolean postDecrementExpression() {
+        if (tokenCheck("IDENTIFIER")) {
+            if (tokenCheck("DECREMENT")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // <postincrement expression> ::= <postfix expression> ++
+    public static boolean postIncrementExpression() {
+        if (tokenCheck("IDENTIFIER")) {
+            if (tokenCheck("INCREMENT")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // <postfix expression> ::= <primary> | <postincrement expression> | <postdecrement expression> | <expression name> 
+    public static boolean postfixExpression() {
+        // <primary>
+        if (primary()) {
+            return true;
+        } else if (tokens.size() > 1 && tokens.get(0).equals("IDENTIFIER") && tokens.get(1).equals("INCREMENT")) {
+            postIncrementExpression();
+            return true;
+        } else if (tokens.size() > 1 && tokens.get(0).equals("IDENTIFIER") && tokens.get(1).equals("DECREMENT")) {
+            postDecrementExpression();
+            return true;
+        } else if (expressionName()) {
+            return true;
+        }
+        // <expression name>
+        return false;
+    }
+
+    // <primary> ::= <primary no new array>
+    public static boolean primary() {
+        if (primaryNoNewArray()) {
+            return true;
+        }
+        return false;
+    }
+
+    // <primary no new array> ::= <literal> | ( <expression> ) |  <method invocation> 
+    public static boolean primaryNoNewArray() {
+        // literal 
+        if (literal()) {
+            return true;
+        // (expression)
+        } else if (tokenCheck("OPEN_PARENTHESIS_DEL")) {
+            if (expression()) {
+                if (tokenCheck("CLOSE_PARENTHESIS_DEL")) {
+                    return true;
+                }
+            }
+        }
+        // method invocation 
+        return false;
     }
 
     // <field declaration> ::= <field modifier>? <type> <variable declarators>;
@@ -160,7 +483,7 @@ public class Parser {
         return false;
     }
 
-
+    // <string literal> ::= "<stringStream>"
     public static boolean stringLiteral() {
         if (tokenCheck("OPEN_DOUBLE_QUOTE_DEL")) {
             stringStream();
@@ -191,19 +514,63 @@ public class Parser {
     }
 
     
-
+    /* 
     // <expression> :: INT_LITERAL | FLOAT_LITERAL | CHAR_LITERAL | BOOL_LITERAL | STRING_LITERAL
     public static boolean expression() {
-        String [] literals = {"INT_LITERAL", "FLOAT_LITERAL", "CHAR_LITERAL", "BOOL_LITERAL"};
+        String [] literals = {"INT_LITERAL", "FLOAT_LITERAL", "BOOL_LITERAL"};
         for (String literal : literals) {
             if (tokenCheck(literal)) {
                 return true;
             }
         }
-        if (variableDeclaratorId()) {
+
+        if (stringLiteral()) {
             return true;
-        } else if (stringLiteral()) {
+        } else if (charLiteral()) {
             return true;
+        }
+            return false;
+    }
+    */
+
+    // <expression name> ::= <identifier>
+    public static boolean expressionName() {
+        if (tokenCheck("IDENTIFIER")) {
+            return true;
+        }
+        return false;
+    }
+
+    // <expression> :: INT_LITERAL | FLOAT_LITERAL | CHAR_LITERAL | BOOL_LITERAL | STRING_LITERAL
+    public static boolean literal() {
+        String [] literals = {"INT_LITERAL", "FLOAT_LITERAL", "BOOL_LITERAL"};
+        for (String literal : literals) {
+            if (tokenCheck(literal)) {
+                return true;
+            }
+        }
+
+        if (stringLiteral()) {
+            return true;
+        } else if (charLiteral()) {
+            return true;
+        }
+            return false;
+        }
+
+    /*
+     <char literal> := SINGLE_QUOTE_ESC | NEWLINE_ESC | HORIZONAL_TAB_ESC | CHAR_LITERAL
+     */
+    public static boolean charLiteral() {
+        String[] streams = {"SINGLE_QUOTE_ESC", "NEWLINE_ESC", "HORIZONAL_TAB_ESC", "CHAR_LITERAL"};
+        if (tokenCheck("OPEN_SINGLE_QUOTE_DEL")) {
+            for (String s: streams) {
+                if (tokenCheck(s)) {
+                    if (tokenCheck("CLOSE_SINGLE_QUOTE_DEL")) {
+                        return true;
+                    }
+                }
+            }
         }
         return false;
     }
@@ -232,3 +599,7 @@ public class Parser {
 
 
 }
+
+/*
+ To do: <method invocation> found in <primary no new array>
+ */
